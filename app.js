@@ -8,6 +8,7 @@ import {
     updateTask,
     deleteTask,
     toggleCompletedTask,
+    getTasksByCompleted,
 } from "./database.js";
 import cors from "cors";
 
@@ -23,9 +24,37 @@ app.use(cors(corsOptions));
 
 // Ver todas las tareas
 app.get('/tasks', async (req, res) => {
-    const tasks = await getAllTasks();
-    res.json(tasks);
-});
+    try {
+      const tasks = await getAllTasks();
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error en la ruta /tasks:", error);
+      res.status(500).json({ error: "Error al obtener las tareas" });
+    }
+  });
+
+  app.get('/tasks/:taskId', async (req, res) => {
+    const { taskId } = req.params;
+    try {
+      const task = await getTask(taskId);
+      res.json(task);
+    } catch (error) {
+      console.error("Error en la ruta /tasks/:taskId:", error);
+      res.status(500).json({ error: "Error al obtener la tarea" });
+    }
+  });
+
+  app.get('/tasks/completed/:completed', async (req, res) => {
+    const { completed } = req.params;
+    try {
+      const tasks = await getTasksByCompleted(completed);
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error in the route /tasks/completed/:completed:", error);
+      res.status(500).json({ error: "Error fetching completed tasks" });
+    }
+  });
+  
 
 // Ver tareas pendientes
 app.get('/tasks/pending', async (req, res) => {
@@ -35,27 +64,33 @@ app.get('/tasks/pending', async (req, res) => {
 
 // Ver tareas completadas
 app.get('/tasks/completed', async (req, res) => {
-    const completedTasks = await getCompletedTasks();
-    res.json(completedTasks);
+  try {
+      const completedTasks = await getCompletedTasks();
+      res.json(completedTasks);
+  } catch (error) {
+      console.error("Error en la ruta /tasks/completed:", error);
+      res.status(500).json({ error: "Error al obtener tareas completadas" });
+  }
 });
 
 // Crear nueva tarea
 app.post('/tasks', async (req, res) => {
-    const { title } = req.body;
+    const { title, description, due_date, due_time } = req.body;
     try {
-        const newTask = await createTask(title);
-        res.json(newTask);
+      const newTask = await createTask(title, description, due_date, due_time);
+      res.json(newTask);
     } catch (error) {
-        res.status(500).json({ error: "Error al crear la tarea" });
+      console.error("Error en la ruta /tasks:", error);
+      res.status(500).json({ error: "Error al crear la tarea" });
     }
-});
+  });
 
-// Actualizar título de una tarea
-app.put('/tasks/:taskId', async (req, res) => {
+  app.put('/tasks/:taskId', async (req, res) => {
+    console.log("Request body:", req.body);
     const { taskId } = req.params;
-    const { newTitle } = req.body;
+    const { title, description, due_date, due_time } = req.body;
     try {
-        const updatedTask = await updateTaskTitle(taskId, newTitle);
+        const updatedTask = await updateTask(taskId, { title, description, due_date, due_time });
         res.json(updatedTask);
     } catch (error) {
         res.status(500).json({ error: "Error al actualizar la tarea" });

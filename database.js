@@ -12,27 +12,57 @@ const pool = mysql
   .promise();
 
   export async function getAllTasks() {
-    const [rows] = await pool.execute(`SELECT * FROM tasks`);
-    return rows;
+    try {
+      const [tasks] = await pool.execute(`SELECT * FROM tasks`);
+      return tasks;
+    } catch (error) {
+      console.error("Error en getAllTasks:", error);
+      throw error;
+    }
   }
+
+  export async function getTasksByCompleted(completed) {
+    try {
+      const [rows] = await pool.execute(`SELECT * FROM tasks WHERE completed = ?`, [completed]);
+      console.log(`Tasks with completed=${completed}:`, rows);
+      return rows;
+    } catch (error) {
+      console.error("Error in getTasksByCompleted:", error);
+      throw error;
+    }
+  }  
   
   export async function getPendingTasks() {
-    const [rows] = await pool.execute(`SELECT * FROM tasks WHERE completed = 0`);
-    return rows;
-  }
-  
-  export async function getCompletedTasks() {
+    const [tasks] = await pool.execute(`SELECT * FROM tasks WHERE completed = 0`);
+    console.log("Pending Tasks:", rows);
+    return tasks;
+}
+
+export async function getCompletedTasks() {
     const [rows] = await pool.execute(`SELECT * FROM tasks WHERE completed = 1`);
+    console.log("Completed Tasks:", rows);
     return rows;
-  }
+}
   
-  export async function createTask(title) {
-    const [result] = await pool.execute(`INSERT INTO tasks (title) VALUES (?)`, [
-      title,
-    ]);
+export async function createTask(title, description, due_date, due_time) {
+  try {
+    const params = [title || null, description || null, due_date || null, due_time || null];
+
+    const [result] = await pool.execute(
+      `
+      INSERT INTO tasks (title, description, due_date, due_time)
+      VALUES (?, ?, ?, ?)
+      `,
+      params
+    );
+
     const taskId = result.insertId;
     return getTask(taskId);
+  } catch (error) {
+    console.error("Error en createTask:", error);
+    throw error;
   }
+}
   
   export async function getTask(taskId) {
     const [rows] = await pool.execute(`SELECT * FROM tasks WHERE id = ?`, [
@@ -43,21 +73,24 @@ const pool = mysql
   
   export async function updateTask(taskId, newDetails) {
     const { title, description, due_date, due_time } = newDetails;
-    const [result] = await pool.execute(
+    try {
+      const [result] = await pool.execute(
         `
         UPDATE tasks
         SET title = ?, description = ?, due_date = ?, due_time = ?
         WHERE id = ?;
         `,
         [title, description, due_date, due_time, taskId]
-    );
-
-    if (result.affectedRows > 0) {
-        return getTask(taskId);
-    } else {
-        throw new Error(`No se encontró ninguna tarea con el ID ${taskId}`);
+      );
+      if (result.affectedRows > 0) {
+        return { success: true, message: "Tarea actualizada con éxito" };
+      } else {
+        throw new Error("No se pudo actualizar la tarea");
+      }
+    } catch (error) {
+      throw error;
     }
-}
+  }  
   
   export async function deleteTask(taskId) {
     await pool.execute(`DELETE FROM tasks WHERE id = ?`, [taskId]);
